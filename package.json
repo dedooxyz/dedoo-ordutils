@@ -1,0 +1,49 @@
+{
+  "name": "dedoo-ordutils",
+  "version": "1.0.5",
+  "type": "module",
+  "description": "Dedoo Blockchain-agnostic Ordinals Utils with Multi-Output Transaction Support",
+  "keywords": [
+    "dedoo",
+    "blockchain",
+    "bitcoin",
+    "junkcoin",
+    "ordinals",
+    "multi-output",
+    "transaction",
+    "keyring",
+    "wallet"
+  ],
+  "homepage": "https://dedoo.xyz",
+  "bugs": {
+    "url": "https://github.com/dedoo-project/dedoo-ordutils/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dedoo-project/dedoo-ordutils.git"
+  },
+  "author": "Dedoo Development Team",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "/lib"
+  ],
+  "scripts": {
+    "build": "rm -rf lib && tsc"
+  },
+  "dependencies": {
+    "dedoo-coinjs-lib": "^1.0.6",
+    "bn.js": "5.2.1",
+    "bs58check": "2.1.2"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/node": "^20.10.5",
+    "typescript": "latest"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
