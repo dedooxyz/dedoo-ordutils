@@ -391,11 +391,15 @@ export async function createMultisendOrd({
   utxos,
   toAddress,
   signPsbtHex,
-  network = networks.bellcoin,
+  network,
   changeAddress,
   publicKey,
   feeRate,
 }: CreateMultiSendOrd) {
+  // Ensure network is provided - no hardcoded defaults for blockchain agnosticism
+  if (!network) {
+    throw new Error("Network parameter is required for blockchain-agnostic operation");
+  }
   let tx = new Psbt({ network });
   tx.setVersion(1);
 

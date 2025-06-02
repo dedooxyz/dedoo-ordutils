@@ -1,6 +1,6 @@
 {
   "name": "dedoo-ordutils",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "description": "Dedoo Blockchain-agnostic Ordinals Utils with Multi-Output Transaction Support",
   "keywords": [
@@ -16,11 +16,11 @@
   ],
   "homepage": "https://dedoo.xyz",
   "bugs": {
-    "url": "https://github.com/dedoo-project/dedoo-ordutils/issues"
+    "url": "https://github.com/dedooxyz/dedoo-ordutils/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dedoo-project/dedoo-ordutils.git"
+    "url": "git+https://github.com/dedooxyz/dedoo-ordutils.git"
   },
   "author": "Dedoo Development Team",
   "license": "ISC",
@@ -33,7 +33,7 @@
     "build": "rm -rf lib && tsc"
   },
   "dependencies": {
-    "dedoo-coinjs-lib": "^1.0.6",
+    "dedoo-coinjs-lib": "^1.0.7",
     "bn.js": "5.2.1",
     "bs58check": "2.1.2"
   },

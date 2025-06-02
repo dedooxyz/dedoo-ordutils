@@ -37,7 +37,7 @@ export interface CreateMultiSendOrd {
   signPsbtHex: (psbtHex: string) => Promise<string>;
   changeAddress: string;
   feeRate?: number;
-  network?: Network;
+  network: Network; // Required for blockchain-agnostic operation
   publicKey: string;
 }
 

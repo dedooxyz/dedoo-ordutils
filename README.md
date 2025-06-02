@@ -6,11 +6,11 @@ A **blockchain-agnostic** ordinals utility library for Bitcoin-like cryptocurren
 
 🚀 **Key Features:**
 - **Blockchain Agnostic**: Works with any Bitcoin-like cryptocurrency that supports ordinals
-- **Multi-Output Transactions**: Advanced support for complex transaction structures
+- **Multi-Output Transactions**: Advanced support for complex transaction structures including donations
 - **Ordinal Management**: Create, transfer, and manage ordinal inscriptions
 - **TypeScript Support**: Full type definitions included
 - **UTXO Optimization**: Efficient UTXO selection and management
-- **Keyring Integration**: Seamless integration with wallet keyrings
+- **Modern Architecture**: Built on dedoo-coinjs-lib 1.0.7 for maximum compatibility
 
 ## 🌟 Why Choose dedoo-ordutils?
 
@@ -48,24 +48,33 @@ networks.register('mycoin', {
 const network = networks.get('mycoin');
 
 // Create a simple coin transfer
-const transaction = await createSendCoin({
+const psbt = await createSendCoin({
   utxos: [
     {
-      txid: 'utxo_transaction_id',
-      vout: 0,
-      value: 100000,
-      script: Buffer.from('utxo_script_hex', 'hex')
+      txId: 'utxo_transaction_id',
+      outputIndex: 0,
+      satoshis: 100000,
+      scriptPk: 'utxo_script_hex',
+      addressType: 1, // P2WPKH
+      address: 'sender_address',
+      ords: []
     }
   ],
   toAddress: 'recipient_address',
-  amount: 50000,
-  feeRate: 10, // satoshis per byte
+  toAmount: 50000,
+  feeRate: 10, // satoshis per vbyte
   network,
   changeAddress: 'your_change_address',
-  keyring: yourKeyring // Your wallet keyring
+  pubkey: 'your_public_key_hex',
+  signTransaction: async (psbt) => {
+    // Your signing logic here
+    psbt.signAllInputs(keyPair);
+  },
+  receiverToPayFee: false,
+  enableRBF: true
 });
 
-console.log('Transaction hex:', transaction.toHex());
+console.log('Transaction hex:', psbt.toHex());
 ```
 
 ### Multi-Output Transaction
@@ -76,28 +85,36 @@ import { networks } from 'dedoo-coinjs-lib';
 
 const network = networks.get('mycoin');
 
-// Create a multi-output transaction
-const multiTransaction = await createMultiSendCoin({
+// Create a multi-output transaction (perfect for donations)
+const multiPsbt = await createMultiSendCoin({
   utxos: [
     {
-      txid: 'utxo_transaction_id',
-      vout: 0,
-      value: 200000,
-      script: Buffer.from('utxo_script_hex', 'hex')
+      txId: 'utxo_transaction_id',
+      outputIndex: 0,
+      satoshis: 200000,
+      scriptPk: 'utxo_script_hex',
+      addressType: 1, // P2WPKH
+      address: 'sender_address',
+      ords: []
     }
   ],
   outputs: [
     { address: 'recipient1_address', amount: 30000 },
-    { address: 'recipient2_address', amount: 40000 },
+    { address: 'recipient2_address', amount: 40000 }, // e.g., donation
     { address: 'recipient3_address', amount: 50000 }
   ],
   feeRate: 15,
   network,
   changeAddress: 'your_change_address',
-  keyring: yourKeyring
+  pubkey: 'your_public_key_hex',
+  signTransaction: async (psbt) => {
+    psbt.signAllInputs(keyPair);
+  },
+  receiverToPayFee: false,
+  enableRBF: true
 });
 
-console.log('Multi-output transaction:', multiTransaction.toHex());
+console.log('Multi-output transaction:', multiPsbt.toHex());
 ```
 
 ## 🏗️ API Reference
@@ -107,38 +124,80 @@ console.log('Multi-output transaction:', multiTransaction.toHex());
 Creates a simple coin transfer transaction.
 
 **Parameters:**
-- `utxos`: Array of UTXOs to spend
+- `utxos`: Array of UnspentOutput objects with ordinal information
 - `toAddress`: Recipient address
-- `amount`: Amount to send (in satoshis)
-- `feeRate`: Fee rate in satoshis per byte
-- `network`: Network configuration
+- `toAmount`: Amount to send (in satoshis)
+- `feeRate`: Fee rate in satoshis per vbyte
+- `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
-- `keyring`: Wallet keyring for signing
+- `pubkey`: Public key hex string for signing
+- `signTransaction`: Async function to sign the PSBT
+- `receiverToPayFee`: Boolean - whether receiver pays the fee
+- `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
+- `calculateFee`: Optional custom fee calculation function
+- `tick`: Optional ticker symbol (default: "COIN")
 
 ### createMultiSendCoin(options)
 
-Creates a multi-output transaction.
+Creates a multi-output transaction with support for donations and complex outputs.
 
 **Parameters:**
-- `utxos`: Array of UTXOs to spend
+- `utxos`: Array of UnspentOutput objects
 - `outputs`: Array of {address, amount} objects
-- `feeRate`: Fee rate in satoshis per byte
-- `network`: Network configuration
+- `feeRate`: Fee rate in satoshis per vbyte
+- `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
-- `keyring`: Wallet keyring for signing
+- `pubkey`: Public key hex string for signing
+- `signTransaction`: Async function to sign the PSBT
+- `receiverToPayFee`: Boolean - whether receiver pays the fee
+- `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
+- `calculateFee`: Optional custom fee calculation function
+- `tick`: Optional ticker symbol (default: "COIN")
 
-### createMultiSendOrd(options)
+### createSendOrd(options)
 
-Creates a multi-output ordinal transaction.
+Creates an ordinal inscription transfer transaction.
 
 **Parameters:**
-- `utxos`: Array of UTXOs to spend
-- `ordinalUtxos`: Array of ordinal UTXOs
-- `outputs`: Array of output specifications
-- `feeRate`: Fee rate in satoshis per byte
-- `network`: Network configuration
+- `utxos`: Array of UnspentOutput objects including ordinal UTXOs
+- `toAddress`: Recipient address
+- `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
-- `keyring`: Wallet keyring for signing
+- `pubkey`: Public key hex string for signing
+- `feeRate`: Fee rate in satoshis per vbyte
+- `outputValue`: Value for the ordinal output
+- `signTransaction`: Async function to sign the PSBT
+- `calculateFee`: Optional custom fee calculation function
+- `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
+- `tick`: Optional ticker symbol (default: "COIN")
+
+### createMultisendOrd(options)
+
+Creates a multi-ordinal transfer transaction.
+
+**Parameters:**
+- `utxos`: Array of UnspentOutputBase objects (ordinal and regular UTXOs)
+- `toAddress`: Recipient address for ordinals
+- `signPsbtHex`: Function to sign PSBT hex and return signed hex
+- `network`: Network configuration (required - no default)
+- `changeAddress`: Address to send change to
+- `publicKey`: Public key hex string
+- `feeRate`: Fee rate in satoshis per vbyte
+
+## 📋 Changelog
+
+### Version 1.0.6 (Latest)
+- ✅ **Updated to dedoo-coinjs-lib 1.0.7** for enhanced blockchain compatibility
+- ✅ **Removed hardcoded blockchain defaults** - now fully blockchain agnostic
+- ✅ **Enhanced createMultisendOrd** - network parameter now required (no defaults)
+- ✅ **Improved error handling** - better validation for blockchain-agnostic operation
+- ✅ **Updated TypeScript definitions** - more accurate type definitions
+- ✅ **Multi-output transaction improvements** - better support for donation workflows
+
+### Version 1.0.5
+- Multi-output transaction support
+- Enhanced ordinal handling
+- Improved UTXO management
 
 ## 🔗 Ecosystem
 

@@ -85,7 +85,7 @@ export class OrdTransaction {
   private signTransaction: CreateSendCoin["signTransaction"];
   private calculateFee?: CreateSendCoin["calculateFee"];
   public changedAddress: string;
-  private network: Network = networks.bellcoin;
+  private network: Network;
   private feeRate: number;
   private pubkey: string;
   private enableRBF = true;
