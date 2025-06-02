@@ -1,21 +1,27 @@
 import { UnspentOutput } from "./OrdTransaction.js";
 import { OrdUnit } from "./OrdUnit.js";
+import { getConfig } from "./config.js";
 
-export const UTXO_DUST = 1000;
+// We no longer export a hardcoded UTXO_DUST constant
+// Instead, we use the configuration system to get the dust threshold
 
 export class OrdUnspendOutput {
   ordUnits: OrdUnit[];
   utxo: UnspentOutput;
-  constructor(utxo: UnspentOutput, outputValue?: number) {
+  constructor(utxo: UnspentOutput, outputValue?: number, config?: { utxoDust?: number }) {
     this.utxo = utxo;
-    this.split(utxo.satoshis, utxo.ords, outputValue);
+    const utxoDust = config?.utxoDust || getConfig().utxoDust;
+    this.split(utxo.satoshis, utxo.ords, outputValue, utxoDust);
   }
 
   private split(
     satoshis: number,
     ords: { id: string; offset: number }[],
-    splitOutputValue = UTXO_DUST
+    splitOutputValue?: number,
+    utxoDust?: number
   ) {
+    // Use provided splitOutputValue or utxoDust from config or get it from the global config
+    splitOutputValue = splitOutputValue || utxoDust || getConfig().utxoDust;
     const ordUnits: OrdUnit[] = [];
     let leftAmount = satoshis;
     for (let i = 0; i < ords.length; i++) {
@@ -84,7 +90,8 @@ export class OrdUnspendOutput {
       leftAmount -= curOffset + splitOutputValue;
     }
 
-    if (leftAmount > UTXO_DUST) {
+    const dustThreshold = utxoDust || getConfig().utxoDust;
+    if (leftAmount > dustThreshold) {
       ordUnits.push(new OrdUnit(leftAmount, []));
     } else if (leftAmount > 0) {
       if (ordUnits.length > 0) {

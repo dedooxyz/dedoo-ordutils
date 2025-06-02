@@ -1,6 +1,6 @@
 {
   "name": "dedoo-ordutils",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "description": "Dedoo Blockchain-agnostic Ordinals Utils with Multi-Output Transaction Support",
   "keywords": [

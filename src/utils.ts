@@ -2,15 +2,18 @@ import { address, Network, payments, Psbt, Transaction } from "dedoo-coinjs-lib"
 import BN from "bn.js";
 import { AddressType, UnspentOutputBase } from "./OrdTransaction.js";
 import { AddInputProps } from "./types.js";
+import { getConfig } from "./config.js";
 
-export function satoshisToAmount(val: number) {
+export function satoshisToAmount(val: number, denominationFactor?: number) {
+  const factor = denominationFactor || getConfig().denominationFactor;
   const num = new BN(val);
-  return num.div(new BN(100000000)).toString(10);
+  return num.div(new BN(factor)).toString(10);
 }
 
-export function amountToSaothis(val: any) {
+export function amountToSaothis(val: any, denominationFactor?: number) {
+  const factor = denominationFactor || getConfig().denominationFactor;
   const num = new BN(val);
-  return num.mul(new BN(100000000)).toNumber();
+  return num.mul(new BN(factor)).toNumber();
 }
 
 export const calculateFee = async (
@@ -70,17 +73,21 @@ export const addPsbtInput = ({
 
 export function getAddressType(
   addressStr: string,
-  network: Network
+  network: Network,
+  config?: { addressVersions?: { p2pkh?: number; p2sh?: number; p2wpkh?: number; p2tr?: number } }
 ): AddressType.P2WPKH | AddressType.P2PKH | AddressType.P2TR | undefined {
+  // Get address versions from config or use defaults
+  const addressVersions = config?.addressVersions || getConfig({ network }).addressVersions;
+  
   try {
     const version = address.fromBase58Check(addressStr).version;
-    if (version === network.pubKeyHash) return 0;
+    if (version === network.pubKeyHash) return AddressType.P2PKH;
     if (version === network.scriptHash) return undefined;
   } catch {
     try {
       const version = address.fromBech32(addressStr).version;
-      if (version === 0x00) return 1;
-      if (version === 0x01) return 2;
+      if (version === addressVersions.p2wpkh) return AddressType.P2WPKH;
+      if (version === addressVersions.p2tr) return AddressType.P2TR;
     } catch {}
   }
 

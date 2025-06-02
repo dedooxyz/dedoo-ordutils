@@ -3,7 +3,6 @@ import {
   UnspentOutput,
   UnspentOutputBase,
 } from "./OrdTransaction.js";
-import { UTXO_DUST } from "./OrdUnspendOutput.js";
 import { addPsbtInput, calculateFee, satoshisToAmount } from "./utils.js";
 import type {
   CreateSendOrd,
@@ -12,8 +11,13 @@ import type {
   CreateMultiSendOrd,
 } from "./types.js";
 import { networks, Psbt } from "dedoo-coinjs-lib";
+import { getConfig, setGlobalConfig, BlockchainConfig } from "./config.js";
 
-const DEFAULT_TICK = "COIN";
+// Export configuration functions for external use
+export { getConfig, setGlobalConfig, BlockchainConfig };
+
+// Use DEFAULT_TICK from config
+const DEFAULT_TICK = getConfig().defaultTick;
 
 export async function createSendCoin({
   utxos,
@@ -27,14 +31,20 @@ export async function createSendCoin({
   pubkey,
   calculateFee,
   enableRBF = true,
-  tick = DEFAULT_TICK,
+  tick,
+  config,
 }: CreateSendCoin) {
+  // Use provided config or create one from network
+  const configToUse = config || getConfig({ network });
+  const tickToUse = tick || configToUse.defaultTick;
+  
   const tx = new OrdTransaction({
     signTransaction,
     network,
     pubkey,
     feeRate,
     calculateFee,
+    config: configToUse,
   });
   tx.setEnableRBF(enableRBF);
   tx.setChangeAddress(changeAddress);
@@ -77,7 +87,7 @@ export async function createSendCoin({
 
   if (receiverToPayFee) {
     const unspent = tx.getUnspent();
-    if (unspent >= UTXO_DUST) {
+    if (unspent >= configToUse.utxoDust) {
       tx.addChangeOutput(unspent);
     }
 
@@ -112,7 +122,7 @@ export async function createSendCoin({
     }
 
     const leftAmount = unspent - networkFee;
-    if (leftAmount >= UTXO_DUST) {
+    if (leftAmount >= configToUse.utxoDust) {
       // change dummy output to true output
       tx.getChangeOutput().value = leftAmount;
     } else {
@@ -137,14 +147,20 @@ export async function createMultiSendCoin({
   pubkey,
   calculateFee,
   enableRBF = true,
-  tick = DEFAULT_TICK,
+  tick,
+  config,
 }: CreateMultiSendCoin) {
+  // Use provided config or create one from network
+  const configToUse = config || getConfig({ network });
+  const tickToUse = tick || configToUse.defaultTick;
+  
   const tx = new OrdTransaction({
     signTransaction,
     network,
     pubkey,
     feeRate,
     calculateFee,
+    config: configToUse,
   });
   tx.setEnableRBF(enableRBF);
   tx.setChangeAddress(changeAddress);
@@ -238,11 +254,13 @@ export async function createMultiSendCoin({
     // Now check if there's any unspent amount left for change
     const unspent = tx.getUnspent();
     console.log(`📋 LIBRARY: After fee deduction, unspent: ${unspent} satoshis`);
-    if (unspent >= UTXO_DUST) {
+    // Use the config from parameters or create one from network
+    const config = getConfig({ network });
+    if (unspent >= config.utxoDust) {
       console.log(`📋 LIBRARY: Adding change output: ${unspent} satoshis to ${tx.changedAddress}`);
       tx.addChangeOutput(unspent);
     } else {
-      console.log(`📋 LIBRARY: No change output needed (unspent ${unspent} < dust ${UTXO_DUST})`);
+      console.log(`📋 LIBRARY: No change output needed (unspent ${unspent} < dust ${config.utxoDust})`);
     }
 
     // Log final outputs before creating PSBT
@@ -271,7 +289,9 @@ export async function createMultiSendCoin({
     }
 
     const leftAmount = unspent - networkFee;
-    if (leftAmount >= UTXO_DUST) {
+    // Use the config from parameters or create one from network
+    const config = getConfig({ network });
+    if (leftAmount >= config.utxoDust) {
       // change dummy output to true output
       tx.getChangeOutput().value = leftAmount;
     } else {
@@ -295,14 +315,20 @@ export async function createSendOrd({
   signTransaction,
   calculateFee,
   enableRBF = true,
-  tick = DEFAULT_TICK,
+  tick,
+  config,
 }: CreateSendOrd) {
+  // Use provided config or create one from network
+  const configToUse = config || getConfig({ network });
+  const tickToUse = tick || configToUse.defaultTick;
+  
   const tx = new OrdTransaction({
     network,
     pubkey,
     signTransaction,
     calculateFee,
     feeRate,
+    config: configToUse,
   });
   tx.setEnableRBF(enableRBF);
   tx.setChangeAddress(changeAddress);
@@ -369,13 +395,17 @@ export async function createSendOrd({
   if (unspent < networkFee) {
     throw new Error(
       `Balance not enough. Need ${satoshisToAmount(
-        networkFee
-      )} ${tick} as network fee, but only ${satoshisToAmount(unspent)} ${tick}`
+        networkFee,
+        configToUse.denominationFactor
+      )} ${tickToUse} as network fee, but only ${satoshisToAmount(
+        unspent,
+        configToUse.denominationFactor
+      )} ${tickToUse}`
     );
   }
 
   const leftAmount = unspent - networkFee;
-  if (leftAmount >= UTXO_DUST) {
+  if (leftAmount >= configToUse.utxoDust) {
     // change dummy output to true output
     tx.getChangeOutput().value = leftAmount;
   } else {
@@ -395,11 +425,16 @@ export async function createMultisendOrd({
   changeAddress,
   publicKey,
   feeRate,
+  config,
 }: CreateMultiSendOrd) {
   // Ensure network is provided - no hardcoded defaults for blockchain agnosticism
   if (!network) {
     throw new Error("Network parameter is required for blockchain-agnostic operation");
   }
+  
+  // Use provided config or create one from network
+  const configToUse = config || getConfig({ network });
+  
   let tx = new Psbt({ network });
   tx.setVersion(1);
 

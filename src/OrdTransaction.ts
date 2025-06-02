@@ -1,7 +1,7 @@
-import { UTXO_DUST } from "./OrdUnspendOutput.js";
 import { payments, networks, Psbt } from "dedoo-coinjs-lib";
 import type { Network } from "dedoo-coinjs-lib";
 import type { CreateSendCoin } from "./types.js";
+import { getConfig, BlockchainConfig } from "./config.js";
 
 interface TxInput {
   data: {
@@ -89,21 +89,26 @@ export class OrdTransaction {
   private feeRate: number;
   private pubkey: string;
   private enableRBF = true;
+  private config: BlockchainConfig;
   constructor({
     network,
     pubkey,
     signTransaction,
     calculateFee,
     feeRate,
+    config,
   }: Pick<
     CreateSendCoin,
-    "signTransaction" | "network" | "pubkey" | "feeRate" | "calculateFee"
+    "signTransaction" | "network" | "pubkey" | "feeRate" | "calculateFee" | "config"
   >) {
     this.signTransaction = signTransaction;
     this.calculateFee = calculateFee;
     this.network = network;
     this.pubkey = pubkey;
-    this.feeRate = feeRate || 5;
+    
+    // Use configuration system for default values
+    this.config = config || getConfig({ network });
+    this.feeRate = feeRate || this.config.defaultFeeRate;
   }
 
   setEnableRBF(enable: boolean) {
@@ -261,7 +266,9 @@ export class OrdTransaction {
 
     if (unspent > fee) {
       const left = unspent - fee;
-      if (left > UTXO_DUST) {
+      // Use the config system to get the dust threshold
+      const config = getConfig({ network: this.network });
+      if (left > config.utxoDust) {
         this.addChangeOutput(left);
       }
     } else {

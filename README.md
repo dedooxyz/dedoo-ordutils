@@ -11,6 +11,7 @@ A **blockchain-agnostic** ordinals utility library for Bitcoin-like cryptocurren
 - **TypeScript Support**: Full type definitions included
 - **UTXO Optimization**: Efficient UTXO selection and management
 - **Modern Architecture**: Built on dedoo-coinjs-lib 1.0.7 for maximum compatibility
+- **Configurable Constants**: All blockchain-specific constants can be configured
 
 ## 🌟 Why Choose dedoo-ordutils?
 
@@ -20,6 +21,7 @@ Unlike traditional ordinals libraries that are hardcoded for specific networks, 
 - ✅ **Multi-Output Support**: Advanced transaction creation with multiple outputs
 - ✅ **Efficient UTXO Management**: Optimized for minimal fees and maximum efficiency
 - ✅ **Future Proof**: Easy to extend for new Bitcoin-like cryptocurrencies
+- ✅ **Configurable Constants**: Customize dust limits, fee rates, and other blockchain-specific values
 
 ## 📦 Installation
 
@@ -29,6 +31,57 @@ npm install dedoo-ordutils dedoo-coinjs-lib
 
 ## 🔧 Quick Start
 
+### Configuration
+
+The library now supports a flexible configuration system that allows you to customize blockchain-specific constants:
+
+```javascript
+import { setGlobalConfig, getConfig } from 'dedoo-ordutils';
+import { networks } from 'dedoo-coinjs-lib';
+
+// Register your blockchain network
+networks.register('mycoin', {
+  messagePrefix: '\x19MyCoin Signed Message:\n',
+  bech32: 'mc',
+  bip32: { public: 0x0488b21e, private: 0x0488ade4 },
+  pubKeyHash: 0,
+  scriptHash: 5,
+  wif: 128
+});
+
+const network = networks.get('mycoin');
+
+// Set global configuration for your blockchain
+setGlobalConfig({
+  network: network,
+  utxoDust: 1000, // Minimum amount for a UTXO (in satoshis)
+  defaultFeeRate: 5, // Default fee rate in satoshis per byte
+  denominationFactor: 100000000, // Conversion factor between smallest unit and main unit
+  defaultTick: "MYCOIN", // Default ticker symbol
+  addressVersions: {
+    p2pkh: 0x00,
+    p2sh: 0x05,
+    p2wpkh: 0x00,
+    p2tr: 0x01
+  }
+});
+
+// Alternatively, provide config per transaction
+const myConfig = {
+  network: network,
+  utxoDust: 500, // Different dust limit for this specific blockchain
+  defaultFeeRate: 2,
+  denominationFactor: 100000000,
+  defaultTick: "MYCOIN",
+  addressVersions: {
+    p2pkh: 0x00,
+    p2sh: 0x05,
+    p2wpkh: 0x00,
+    p2tr: 0x01
+  }
+};
+```
+
 ### Basic Coin Transfer
 
 ```javascript
@@ -37,7 +90,7 @@ import { networks } from 'dedoo-coinjs-lib';
 
 // Register your blockchain network
 networks.register('mycoin', {
-  messagePrefix: '\\x19MyCoin Signed Message:\\n',
+  messagePrefix: '\x19MyCoin Signed Message:\n',
   bech32: 'mc',
   bip32: { public: 0x0488b21e, private: 0x0488ade4 },
   pubKeyHash: 0,
@@ -71,7 +124,9 @@ const psbt = await createSendCoin({
     psbt.signAllInputs(keyPair);
   },
   receiverToPayFee: false,
-  enableRBF: true
+  enableRBF: true,
+  // Optional: provide custom configuration
+  config: myConfig
 });
 
 console.log('Transaction hex:', psbt.toHex());
@@ -111,7 +166,9 @@ const multiPsbt = await createMultiSendCoin({
     psbt.signAllInputs(keyPair);
   },
   receiverToPayFee: false,
-  enableRBF: true
+  enableRBF: true,
+  // Optional: provide custom configuration
+  config: myConfig
 });
 
 console.log('Multi-output transaction:', multiPsbt.toHex());
@@ -127,7 +184,7 @@ Creates a simple coin transfer transaction.
 - `utxos`: Array of UnspentOutput objects with ordinal information
 - `toAddress`: Recipient address
 - `toAmount`: Amount to send (in satoshis)
-- `feeRate`: Fee rate in satoshis per vbyte
+- `feeRate`: Fee rate in satoshis per vbyte (default: from config)
 - `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
 - `pubkey`: Public key hex string for signing
@@ -135,7 +192,8 @@ Creates a simple coin transfer transaction.
 - `receiverToPayFee`: Boolean - whether receiver pays the fee
 - `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
 - `calculateFee`: Optional custom fee calculation function
-- `tick`: Optional ticker symbol (default: "COIN")
+- `tick`: Optional ticker symbol (default: from config)
+- `config`: Optional blockchain configuration object
 
 ### createMultiSendCoin(options)
 
@@ -144,7 +202,7 @@ Creates a multi-output transaction with support for donations and complex output
 **Parameters:**
 - `utxos`: Array of UnspentOutput objects
 - `outputs`: Array of {address, amount} objects
-- `feeRate`: Fee rate in satoshis per vbyte
+- `feeRate`: Fee rate in satoshis per vbyte (default: from config)
 - `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
 - `pubkey`: Public key hex string for signing
@@ -152,7 +210,8 @@ Creates a multi-output transaction with support for donations and complex output
 - `receiverToPayFee`: Boolean - whether receiver pays the fee
 - `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
 - `calculateFee`: Optional custom fee calculation function
-- `tick`: Optional ticker symbol (default: "COIN")
+- `tick`: Optional ticker symbol (default: from config)
+- `config`: Optional blockchain configuration object
 
 ### createSendOrd(options)
 
@@ -164,12 +223,13 @@ Creates an ordinal inscription transfer transaction.
 - `network`: Network configuration (required)
 - `changeAddress`: Address to send change to
 - `pubkey`: Public key hex string for signing
-- `feeRate`: Fee rate in satoshis per vbyte
+- `feeRate`: Fee rate in satoshis per vbyte (default: from config)
 - `outputValue`: Value for the ordinal output
 - `signTransaction`: Async function to sign the PSBT
 - `calculateFee`: Optional custom fee calculation function
 - `enableRBF`: Boolean - enable Replace-By-Fee (default: true)
-- `tick`: Optional ticker symbol (default: "COIN")
+- `tick`: Optional ticker symbol (default: from config)
+- `config`: Optional blockchain configuration object
 
 ### createMultisendOrd(options)
 
@@ -182,11 +242,60 @@ Creates a multi-ordinal transfer transaction.
 - `network`: Network configuration (required - no default)
 - `changeAddress`: Address to send change to
 - `publicKey`: Public key hex string
-- `feeRate`: Fee rate in satoshis per vbyte
+- `feeRate`: Fee rate in satoshis per vbyte (default: from config)
+- `config`: Optional blockchain configuration object
+
+## 🔧 Configuration System
+
+The library now provides a flexible configuration system that allows you to customize blockchain-specific constants:
+
+### BlockchainConfig Interface
+
+```typescript
+export interface BlockchainConfig {
+  // Network configuration from dedoo-coinjs-lib
+  network: Network;
+  
+  // Minimum amount for a UTXO to be considered valid (in satoshis)
+  utxoDust: number;
+  
+  // Default fee rate to use if not specified (satoshis per byte)
+  defaultFeeRate: number;
+  
+  // Conversion factor between smallest unit and main unit (e.g., 100000000 for BTC)
+  denominationFactor: number;
+  
+  // Default tick symbol for the blockchain
+  defaultTick: string;
+  
+  // Address type versions
+  addressVersions: {
+    p2pkh: number;
+    p2sh: number;
+    p2wpkh: number;
+    p2tr: number;
+  };
+  
+  // Default sighash type to use
+  defaultSighashType?: number;
+}
+```
+
+### Configuration Functions
+
+- `setGlobalConfig(config: BlockchainConfig)`: Set global configuration for all transactions
+- `getConfig(overrides?: Partial<BlockchainConfig>)`: Get current configuration with optional overrides
 
 ## 📋 Changelog
 
-### Version 1.0.6 (Latest)
+### Version 1.0.7 (Latest)
+- ✅ **Added blockchain-agnostic configuration system** - customize constants per blockchain
+- ✅ **Made UTXO_DUST configurable** - set different dust limits per blockchain
+- ✅ **Made fee rates configurable** - customize default fee rates
+- ✅ **Added denomination factor configuration** - support different satoshi/coin ratios
+- ✅ **Made address versions configurable** - support different address schemes
+
+### Version 1.0.6
 - ✅ **Updated to dedoo-coinjs-lib 1.0.7** for enhanced blockchain compatibility
 - ✅ **Removed hardcoded blockchain defaults** - now fully blockchain agnostic
 - ✅ **Enhanced createMultisendOrd** - network parameter now required (no defaults)
@@ -199,37 +308,6 @@ Creates a multi-ordinal transfer transaction.
 - Enhanced ordinal handling
 - Improved UTXO management
 
-## 🔗 Ecosystem
-
-dedoo-ordutils is part of the Dedoo blockchain-agnostic ecosystem:
-
-- **[dedoo-coinjs-lib](https://github.com/dedooxyz/dedoo-coinjs-lib)** - Core blockchain library
-- **[dedoopair](https://github.com/dedooxyz/dedoopair)** - ECPair key management
-- **[dedoohdw](https://github.com/dedooxyz/dedoohdw)** - HD wallet functionality
-- **[dedoo-inscriber](https://github.com/dedooxyz/dedoo-inscriber)** - Inscription support
-- **[dedoo-wallet-sdk](https://github.com/dedooxyz/dedoo-wallet-sdk)** - Provider SDK
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- **NPM Package**: https://www.npmjs.com/package/dedoo-ordutils
-- **GitHub Repository**: https://github.com/dedooxyz/dedoo-ordutils
-- **Documentation**: https://docs.dedoo.xyz
-- **Website**: https://dedoo.xyz
-
-## 🆘 Support
-
-- **GitHub Issues**: https://github.com/dedooxyz/dedoo-ordutils/issues
-- **Community**: https://discord.gg/dedoo
-- **Email**: support@dedoo.xyz
-
----
-
-Built with ❤️ by the [Dedoo Development Team](https://dedoo.xyz)
+MIT © [Dedoo](https://github.com/dedooxyz)
